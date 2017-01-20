@@ -1,25 +1,16 @@
 package com.andymodla.remotecapture;
 
 import processing.core.*; 
-import processing.data.*; 
-import processing.event.*; 
-import processing.opengl.*; 
 
 import android.view.KeyEvent; 
 import android.app.Activity; 
 import android.content.Context; 
 import android.content.SharedPreferences; 
-import java.net.DatagramSocket; 
-import netP5.*; 
+import java.net.DatagramSocket;
 
-import java.util.HashMap; 
-import java.util.ArrayList; 
-import java.io.File; 
-import java.io.BufferedReader; 
-import java.io.PrintWriter; 
-import java.io.InputStream; 
-import java.io.OutputStream; 
-import java.io.IOException; 
+// Processing libraries imports
+//import oscP5.*; // does not use this part of oscP5 library
+import netP5.*;
 
 public class RemoteCapture extends PApplet {
 
@@ -33,27 +24,15 @@ public class RemoteCapture extends PApplet {
 // use at you own risk with NXKS2 hack for Samsung NX500 cameras
 // turn on Wifi in camera
 
-
-
-
-
-
-
-// Processing libraries imports
-
-//import oscP5.*; // does not use this part of oscP5 library
-
-public static final String VERSION="1.0";
-
-UdpClient client; 
+UdpClient client;
 String BROADCAST = "255.255.255.255";
 //String BROADCAST = "255.0.255.255";
 int port = 8000;
-//PSurface pSurface;
 Activity myActivity;
 SharedPreferences preferences;
 public static final String SETTINGS = "com.andymodla.remoteshutter";
-public static final String PHOTOINDEX = "photoIndex";
+  public static final String PHOTOINDEX = "photoIndex";
+  public static final String VIDEOINDEX = "videoIndex";
 static final String CAMERA_MODE= "cameraM.mode";
 
 int black = color(0);   // black
@@ -87,7 +66,8 @@ int VIDEO_CHECKBOX_X = 0;
 int VIDEO_CHECKBOX_Y = 0;
 
 int DELAY = 30;
-int photoIndex = 0;  // next photo index for filename
+ int photoIndex = 0;  // next photo index for filename
+ int videoIndex = 0;  // next video index for filename
 int FONT_SIZE = 48;
 int BASE_FONT_SIZE = 48;
 
@@ -103,6 +83,7 @@ public void settings() {
     println("activity null");
   preferences = myActivity.getSharedPreferences(SETTINGS, Context.MODE_PRIVATE);
   photoIndex = preferences.getInt(PHOTOINDEX, 0);
+  videoIndex = preferences.getInt(VIDEOINDEX, 0);
   mode = preferences.getInt(CAMERA_MODE, PHOTO_MODE);
 }
 
@@ -183,7 +164,13 @@ public void drawMain() {
   if (mode == PHOTO_MODE) {
     fill(yellow);
     if (photoIndex !=0) {
-      text(number(), (3*width)/4-width/20-width/100, (height*9)/10);
+      text(number(photoIndex), (3*width)/4-width/20-width/100, (height*9)/10);
+    }
+  }
+  else {
+    fill(yellow);
+    if (videoIndex !=0) {
+      text(number(videoIndex), (3*width)/4-width/20-width/100, (height*9)/10);
     }
   }
 }
@@ -192,7 +179,7 @@ public void drawMenu() {
   fill(white);
   int y = height/11;
   textSize(FONT_SIZE/2);
-  text("Broadcasting on port 8000", width/8, 3*y);
+  text("Broadcast camera control messages sent to port 8000", width/8, 3*y);
   drawCheckbox();
 
   // finalally add credits
@@ -201,7 +188,7 @@ public void drawMenu() {
   text("Written by Andy Modla", width/8, 8*y);
   text("Copyright 2017 Tekla Inc", width/8, 9*y);
   text("All Rights Reserved", width/8, 10*y);
-  text("Version "+VERSION, width/8, 11*y);
+  text("Version " + BuildConfig.VERSION_NAME, width/8, 11*y);
 }
 
 public void drawCheckbox() {
@@ -339,44 +326,54 @@ public void modeChange(int change) {
   }
 }
 
-public String number() {
-  // TODO fix size at 4 characters long
-  if (photoIndex == 0)
+public String number(int index) {
+  // fix size of index number at 4 characters long
+  if (index == 0)
     return "0000";
-  else if (photoIndex < 10)
-    return ("000" + String.valueOf(photoIndex));
-  else if (photoIndex < 100)
-    return ("00" + String.valueOf(photoIndex));
-  else if (photoIndex < 1000)
-    return ("0" + String.valueOf(photoIndex));
-  return String.valueOf(photoIndex);
+  else if (index < 10)
+    return ("000" + String.valueOf(index));
+  else if (index < 100)
+    return ("00" + String.valueOf(index));
+  else if (index < 1000)
+    return ("0" + String.valueOf(index));
+  return String.valueOf(index);
 }
 
-public void updatePhotoIndex() {
-  photoIndex++;
-  if (photoIndex > 9999) {
-    photoIndex = 1;
+  public void updatePhotoIndex() {
+    photoIndex++;
+    if (photoIndex > 9999) {
+      photoIndex = 1;
+    }
+    SharedPreferences.Editor edit = preferences.edit();
+    edit.putInt(PHOTOINDEX, photoIndex);
+    edit.commit();
   }
-  SharedPreferences.Editor edit = preferences.edit();
-  edit.putInt(PHOTOINDEX, photoIndex);
-  edit.commit();
-}
 
-public void capture() {
+  public void updateVideoIndex() {
+    videoIndex++;
+    if (videoIndex > 9999) {
+      videoIndex = 1;
+    }
+    SharedPreferences.Editor edit = preferences.edit();
+    edit.putInt(VIDEOINDEX, videoIndex);
+    edit.commit();
+  }
+
+  public void capture() {
   if (mode == PHOTO_MODE) {
     // shutter button
     if (first_tap && !focusHold) {
       first_tap = false;
       shutter = true;
       updatePhotoIndex();
-      client.send("C"+number());
+      client.send("C"+number(photoIndex));
       println("CAPTURE");
       counter = DELAY;
     } else {
       if (focusHold) {
         shutter = true;
         updatePhotoIndex();
-        client.send("S"+number());
+        client.send("S"+number(photoIndex));
         println("SHUTTER");
         counter = DELAY;
       } else {
@@ -390,7 +387,8 @@ public void capture() {
   {
     if (!shutter) {
       shutter = true;
-      client.send("V");
+      updateVideoIndex();
+      client.send("V"+number(videoIndex));
       println("RECORD");
       recording = true;
       paused = false;
