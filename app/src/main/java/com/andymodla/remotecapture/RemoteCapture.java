@@ -1,35 +1,18 @@
 package com.andymodla.remotecapture;
 
 import android.app.Activity;
-import android.app.usage.NetworkStatsManager;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.net.ConnectivityManager;
-import android.net.DhcpInfo;
-import android.net.NetworkInfo;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
-import android.os.AsyncTask;
-import android.os.Build;
-import android.text.format.Formatter;
-import android.util.Log;
 import android.view.KeyEvent;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.lang.ref.WeakReference;
-import java.lang.reflect.Method;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
-import java.net.Socket;
 import java.net.SocketException;
-import java.util.ArrayList;
 import java.util.Enumeration;
 
-import netP5.NetAddress;
 import netP5.UdpClient;
 import processing.core.PApplet;
 
@@ -80,6 +63,8 @@ public class RemoteCapture extends PApplet {
     boolean first_tap = false;
     boolean recording = false;
     boolean paused = false;
+    boolean showMessage = false;
+    String message = "";
 
     static final int PHOTO_MODE = 0;
     static final int VIDEO_MODE = 1;
@@ -87,8 +72,14 @@ public class RemoteCapture extends PApplet {
 
     int counter = 0;
     int debounceCounter = 0;
+    int messageCounter = 0;
 
     int BUTTON_SIZE = 300;
+    int RECT_BUTTON_X = 0;
+    int RECT_BUTTON_Y = 0;
+    int CIRCLE_BUTTON_X = 0;
+    int CIRCLE_BUTTON_Y = 0;
+
     int CHECKBOX_SIZE = 50;
     int PHOTO_CHECKBOX_X = 0;
     int PHOTO_CHECKBOX_Y = 0;
@@ -123,6 +114,10 @@ public class RemoteCapture extends PApplet {
     public void setup() {
         background(0);
         BUTTON_SIZE = width / 3;
+        RECT_BUTTON_X = width / 8;
+        RECT_BUTTON_Y = height / 5;
+        CIRCLE_BUTTON_X = width / 2 + width / 4;  // center
+        CIRCLE_BUTTON_Y = height / 2;       // center
         CHECKBOX_SIZE = width / 15;
         PHOTO_CHECKBOX_X = width / 8;
         PHOTO_CHECKBOX_Y = height / 3;
@@ -130,20 +125,26 @@ public class RemoteCapture extends PApplet {
         VIDEO_CHECKBOX_Y = height / 3;
         FONT_SIZE = BASE_FONT_SIZE * (width / 800);
         String wifiApIpAddress = getWifiApIpAddress();
-        println("wifiapIpAddress="+ wifiApIpAddress);
-        BROADCAST = wifiApIpAddress.substring(0, wifiApIpAddress.lastIndexOf('.'))+".255";
-        println("new BROADCAST="+BROADCAST);
+        println("wifiapIpAddress=" + wifiApIpAddress);
+        if (wifiApIpAddress == null) {
+            BROADCAST = "255.255.255.255";
+        } else {
+            BROADCAST = wifiApIpAddress.substring(0, wifiApIpAddress.lastIndexOf('.')) + ".255";
+        }
+        println("new BROADCAST=" + BROADCAST);
 
-            try {
+        try {
             client = new UdpClient(BROADCAST, port);
             if (client == null) {
                 println("Error UDP Client port not available");
-            }
-            if (client.socket() == null) {
+                broadcast = false;
+            } else if (client.socket() == null) {
                 broadcast = false;
             }
         } catch (Exception e) {
             println("Wifi internet problem");
+            broadcast = false;
+            showMessage("WiFi Error");
         }
         broadcast = isBroadcastable("R");
 //        if (!broadcast) {
@@ -167,10 +168,10 @@ public class RemoteCapture extends PApplet {
             fill(lightblue);
         else
             fill(white);
-        rect(width / 8, height / 5, BUTTON_SIZE, BUTTON_SIZE, 50);
+        rect(RECT_BUTTON_X, RECT_BUTTON_Y, BUTTON_SIZE, BUTTON_SIZE, 50);
         if (focusHold) {
             fill(darkblue);
-            rect(width / 8 + height / 20, height / 5 + height / 20, BUTTON_SIZE - height / 10, BUTTON_SIZE - height / 10, 25);
+            rect(RECT_BUTTON_X + height / 20, RECT_BUTTON_Y + height / 20, BUTTON_SIZE - height / 10, BUTTON_SIZE - height / 10, 25);
             fill(yellow);
         } else
             fill(0);
@@ -199,9 +200,9 @@ public class RemoteCapture extends PApplet {
             fill(lightblue);
         else
             fill(white);
-        ellipse(width / 2 + width / 4, height / 2, BUTTON_SIZE, BUTTON_SIZE);
+        ellipse(CIRCLE_BUTTON_X, CIRCLE_BUTTON_Y, BUTTON_SIZE, BUTTON_SIZE);
         fill(aqua);
-        ellipse(width / 2 + width / 4, height / 2, BUTTON_SIZE / 8, BUTTON_SIZE / 8);
+        ellipse(CIRCLE_BUTTON_X, CIRCLE_BUTTON_Y, BUTTON_SIZE / 8, BUTTON_SIZE / 8);
         if (focus)
             fill(yellow);
         else
@@ -224,6 +225,10 @@ public class RemoteCapture extends PApplet {
             if (videoIndex != 0) {
                 text(number(videoIndex), (3 * width) / 4 - width / 20 - width / 100, (height * 9) / 10);
             }
+        }
+        if (showMessage && messageCounter > 0) {
+            fill(red);
+            text(message, width/20, (9*height)/10);
         }
     }
 
@@ -314,6 +319,9 @@ public class RemoteCapture extends PApplet {
 
         if (debounceCounter > 0)
             debounceCounter--;
+
+        if (messageCounter > 0)
+            messageCounter--;
     }
 
     public void onBackPressed() {
@@ -329,12 +337,14 @@ public class RemoteCapture extends PApplet {
 
     public void mousePressed() {
         if (screen == MAIN_SCREEN) {
-            if (mouseY > height / 6 && mouseY < (5 * height) / 6) {
-                if (mouseX > width / 2) {
-                    capture();
-                } else {
-                    focus();
-                }
+            if (mouseY >= RECT_BUTTON_Y && mouseY <= (RECT_BUTTON_Y + BUTTON_SIZE)
+                    && mouseX >= RECT_BUTTON_X && mouseX <= (RECT_BUTTON_X + BUTTON_SIZE)) {
+                focus();
+                return;
+            }
+            if (mouseY >= (CIRCLE_BUTTON_Y - BUTTON_SIZE / 2) && mouseY <= (CIRCLE_BUTTON_Y + BUTTON_SIZE / 2)
+                    && mouseX >= (CIRCLE_BUTTON_X - BUTTON_SIZE / 2) && mouseX <= (CIRCLE_BUTTON_X + BUTTON_SIZE / 2)) {
+                capture();
                 return;
             }
         } else if (screen == MENU_SCREEN) {
@@ -488,9 +498,9 @@ public class RemoteCapture extends PApplet {
             ds.send(dp);
             status = true;
         } catch (IOException e) {
-            println("failed "+BROADCAST);
+            println("failed " + BROADCAST);
         }
-        println(BROADCAST + " broadcast net status "+ status );
+        println(BROADCAST + " broadcast net status " + status);
 //        String wifiApIpAddress = getWifiApIpAddress();
 //        println("wifiapIpAddress="+ wifiApIpAddress);
 //        if (!status) {
@@ -503,25 +513,26 @@ public class RemoteCapture extends PApplet {
     public String getWifiApIpAddress() {
         try {
             for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en
-                    .hasMoreElements();) {
+                    .hasMoreElements(); ) {
                 NetworkInterface intf = en.nextElement();
                 if (intf.getName().contains("wlan")) {
                     for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr
-                            .hasMoreElements();) {
+                            .hasMoreElements(); ) {
                         InetAddress inetAddress = enumIpAddr.nextElement();
                         if (!inetAddress.isLoopbackAddress()
                                 && (inetAddress.getAddress().length == 4)) {
-                            println( inetAddress.getHostAddress());
+                            println(inetAddress.getHostAddress());
                             return inetAddress.getHostAddress();
                         }
                     }
                 }
             }
         } catch (SocketException ex) {
-            println( ex.toString());
+            println(ex.toString());
         }
         return null;
     }
+
     void sendMsg(String msg) {
         if (client != null) {
             if (broadcast) {
@@ -529,12 +540,19 @@ public class RemoteCapture extends PApplet {
                 println("client.send msg=" + msg);
             } else {
                 println("Network Not Reachable");
+                showMessage("WiFi Network Not Reachable");
 //                for (int i = 0; i < ipList.size(); i++) {
 //                    client.send(msg.getBytes(), ipList.get(i));
 //                    println("send " + msg + " to " + ipList.get(i).inetaddress().getHostAddress());
 //                }
             }
         }
+    }
+
+    void showMessage(String text) {
+        message = text;
+        showMessage = true;
+        messageCounter = 200;
     }
 
     // keyboard input for debug
