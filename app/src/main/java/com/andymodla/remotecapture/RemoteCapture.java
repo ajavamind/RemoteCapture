@@ -97,7 +97,8 @@ public class RemoteCapture extends PApplet {
     int screen = MAIN_SCREEN;
 
     public void settings() {
-        fullScreen();
+        size(displayWidth, displayHeight, OPENGL);
+        //fullScreen();  // causes navigation bar to be hidden
         orientation(LANDSCAPE);
         myActivity = getActivity();
         if (myActivity == null)
@@ -329,8 +330,8 @@ public class RemoteCapture extends PApplet {
         if (client != null) {
             DatagramSocket ds = client.socket();
             if (ds != null) {
-                ds.disconnect();
                 ds.close();
+                ds.disconnect();
             }
         }
     }
