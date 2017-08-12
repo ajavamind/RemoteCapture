@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.util.Enumeration;
@@ -110,21 +111,12 @@ public class RemoteCapture extends PApplet {
         //ipList.clear();
         //ipList.add(0, new NetAddress(RIGHT, port));
         //ipList.add(1, new NetAddress(LEFT, port));
+        //println("displayWidth="+displayWidth + " displayHeight="+displayHeight);
     }
 
     public void setup() {
         background(0);
-        BUTTON_SIZE = width / 3;
-        RECT_BUTTON_X = width / 8;
-        RECT_BUTTON_Y = height / 5;
-        CIRCLE_BUTTON_X = width / 2 + width / 4;  // center
-        CIRCLE_BUTTON_Y = height / 2;       // center
-        CHECKBOX_SIZE = width / 15;
-        PHOTO_CHECKBOX_X = width / 8;
-        PHOTO_CHECKBOX_Y = height / 3;
-        VIDEO_CHECKBOX_X = width / 2;
-        VIDEO_CHECKBOX_Y = height / 3;
-        FONT_SIZE = BASE_FONT_SIZE * (width / 800);
+        drawSetup();
         String wifiApIpAddress = getWifiApIpAddress();
         println("wifiapIpAddress=" + wifiApIpAddress);
         if (wifiApIpAddress == null) {
@@ -137,15 +129,16 @@ public class RemoteCapture extends PApplet {
         try {
             client = new UdpClient(BROADCAST, port);
             if (client == null) {
-                println("Error UDP Client port not available");
+                println("WiFi Broadcast Failed "+BROADCAST + " " + port);
+                showMessage("WiFi Broadcast Failed "+BROADCAST + " " + port);
                 broadcast = false;
             } else if (client.socket() == null) {
                 broadcast = false;
             }
         } catch (Exception e) {
-            println("Wifi internet problem");
+            println("WiFi Broadcast Error "+BROADCAST + " " + port);
             broadcast = false;
-            showMessage("WiFi Error");
+            showMessage("WiFi Broadcast Error "+BROADCAST + " " + port);
         }
         broadcast = isBroadcastable("R");
 //        if (!broadcast) {
@@ -162,8 +155,25 @@ public class RemoteCapture extends PApplet {
 //        }
     }
 
+    private void drawSetup() {
+        //println("width="+width + " height="+height);
+
+        BUTTON_SIZE = width / 3;
+        RECT_BUTTON_X = width / 8;
+        RECT_BUTTON_Y = height / 5;
+        CIRCLE_BUTTON_X = RECT_BUTTON_X + BUTTON_SIZE / 2 + width / 2;  // center
+        CIRCLE_BUTTON_Y = RECT_BUTTON_Y + BUTTON_SIZE / 2 ;       // center
+        CHECKBOX_SIZE = width / 15;
+        PHOTO_CHECKBOX_X = width / 8;
+        PHOTO_CHECKBOX_Y = height / 3;
+        VIDEO_CHECKBOX_X = width / 2;
+        VIDEO_CHECKBOX_Y = height / 3;
+        FONT_SIZE = BASE_FONT_SIZE * (width / 800);
+
+    }
+
     public void drawMain() {
-        textSize(FONT_SIZE);
+        setTextSize(FONT_SIZE);
         // focus hold button
         if (focusHold)
             fill(lightblue);
@@ -177,19 +187,19 @@ public class RemoteCapture extends PApplet {
         } else
             fill(0);
         if (mode == PHOTO_MODE) {
-            text("FOCUS", width / 6 + width / 20, height / 2);
-            text("HOLD", width / 6 + width / 20, height / 2 + height / 8);
+            text("FOCUS", RECT_BUTTON_X + BUTTON_SIZE / 6 + BUTTON_SIZE / 20, RECT_BUTTON_Y + BUTTON_SIZE / 2);
+            text("HOLD", RECT_BUTTON_X + BUTTON_SIZE / 6 + BUTTON_SIZE / 20, RECT_BUTTON_Y + BUTTON_SIZE / 2 + BUTTON_SIZE / 8);
         } else // VIDEO_MODE
         {
             //fill(darkblue);
             //rect(width/8+height/20, height/5+height/20, BUTTON_SIZE-height/10, BUTTON_SIZE-height/10, 25);
             //fill(yellow);
             if (shutter && !paused)
-                text("PAUSE", width / 6, height / 2);
+                text("PAUSE", RECT_BUTTON_X + BUTTON_SIZE / 6, RECT_BUTTON_Y + BUTTON_SIZE / 2);
             else if (recording && paused)
-                text("RESUME", width / 6, height / 2);
+                text("RESUME", RECT_BUTTON_X + BUTTON_SIZE / 6, RECT_BUTTON_Y + BUTTON_SIZE / 2);
             else
-                text("OK", width / 6, height / 2);
+                text("OK", RECT_BUTTON_X + BUTTON_SIZE / 6, RECT_BUTTON_Y + BUTTON_SIZE / 2);
         }
 
         // shutter button
@@ -209,22 +219,22 @@ public class RemoteCapture extends PApplet {
         else
             fill(black);
         if (mode == PHOTO_MODE) {
-            text("SHUTTER", width / 2 + width / 8 + width / 20 - width / 24, height / 2 + height / 8 + height / 20);
+            text("SHUTTER", CIRCLE_BUTTON_X - BUTTON_SIZE/2 +  BUTTON_SIZE / 8 + BUTTON_SIZE / 20 , CIRCLE_BUTTON_Y - BUTTON_SIZE/2 +  BUTTON_SIZE / 4 + BUTTON_SIZE / 20);
         } else {
             if (!shutter)
-                text("RECORD", width / 2 + width / 8 + width / 20 - width / 48, height / 2 + height / 8 + height / 20);
+                text("RECORD", CIRCLE_BUTTON_X - BUTTON_SIZE/2 +  BUTTON_SIZE / 8 + BUTTON_SIZE / 20 , CIRCLE_BUTTON_Y - BUTTON_SIZE/2 +  BUTTON_SIZE / 4 + BUTTON_SIZE / 20);
             else
-                text("STOP", width / 2 + width / 8 + width / 20, height / 2 + height / 8 + height / 20);
+                text("STOP", CIRCLE_BUTTON_X - BUTTON_SIZE/2 +  BUTTON_SIZE / 8 + BUTTON_SIZE / 20 , CIRCLE_BUTTON_Y - BUTTON_SIZE/2 +  BUTTON_SIZE / 4 + BUTTON_SIZE / 20);
         }
         if (mode == PHOTO_MODE) {
             fill(yellow);
             if (photoIndex != 0) {
-                text(number(photoIndex), (3 * width) / 4 - width / 20 - width / 100, (height * 9) / 10);
+                text(number(photoIndex), CIRCLE_BUTTON_X - BUTTON_SIZE/2 +  BUTTON_SIZE / 8 + BUTTON_SIZE / 20 , CIRCLE_BUTTON_Y  +  BUTTON_SIZE / 4 + BUTTON_SIZE / 20);
             }
         } else {
             fill(yellow);
             if (videoIndex != 0) {
-                text(number(videoIndex), (3 * width) / 4 - width / 20 - width / 100, (height * 9) / 10);
+                text(number(videoIndex), CIRCLE_BUTTON_X - BUTTON_SIZE/2 +  BUTTON_SIZE / 8 + BUTTON_SIZE / 20 , CIRCLE_BUTTON_Y  +  BUTTON_SIZE / 4 + BUTTON_SIZE / 20);
             }
         }
         if (showMessage && messageCounter > 0) {
@@ -236,21 +246,21 @@ public class RemoteCapture extends PApplet {
     public void drawMenu() {
         fill(white);
         int y = height / 11;
-        textSize(FONT_SIZE / 2);
+        setTextSize(FONT_SIZE / 2);
         text("Broadcast camera control messages sent to port 8000", width / 8, 3 * y);
         drawCheckbox();
 
         // finalally add credits
-        textSize(FONT_SIZE / 2);
+        setTextSize(FONT_SIZE / 2);
         fill(gray);
-        text("Written by Andy Modla", width / 8, 8 * y);
-        text("Copyright 2017 Tekla Inc", width / 8, 9 * y);
-        text("All Rights Reserved", width / 8, 10 * y);
-        text("Version " + BuildConfig.VERSION_NAME, width / 8, 11 * y);
+        text("Written by Andy Modla", width / 8, 7 * y);
+        text("Copyright 2017 Tekla Inc", width / 8, 8 * y);
+        text("All Rights Reserved", width / 8, 9 * y);
+        text("Version " + BuildConfig.VERSION_NAME, width / 8, 10 * y);
     }
 
     public void drawCheckbox() {
-        textSize(FONT_SIZE);
+        setTextSize(FONT_SIZE);
         if (mode == PHOTO_MODE) {
             stroke(red);
             strokeWeight(4);
@@ -282,14 +292,21 @@ public class RemoteCapture extends PApplet {
         strokeWeight(1);
     }
 
+    private void setTextSize(float size) {
+        if (size <= 0)
+            return;
+        textSize(size);
+    }
+
     public void draw() {
         background(0);
-        textSize(FONT_SIZE);
+        drawSetup();
+        setTextSize(FONT_SIZE);
         stroke(255);
 
         // common screen elements
         fill(gray);
-        text("WIFI Remote Capture", width / 4, height / 10);
+        text("WIFI Remote Capture", RECT_BUTTON_X, height / 10);
         stroke(0);
         fill(lightblue);
         ellipse(width / 2 + width / 4 + width / 8, height / 14, BUTTON_SIZE / 10, BUTTON_SIZE / 10);
@@ -520,9 +537,14 @@ public class RemoteCapture extends PApplet {
                     for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr
                             .hasMoreElements(); ) {
                         InetAddress inetAddress = enumIpAddr.nextElement();
+                        //NetworkInterface networkInterface = NetworkInterface.getByInetAddress(inetAddress);
+                        //for (InterfaceAddress address : networkInterface.getInterfaceAddresses()) {
+                        //    println(address.getNetworkPrefixLength());
+                        //}
+                        //println("inetAddress="+inetAddress.getCanonicalHostName());
                         if (!inetAddress.isLoopbackAddress()
                                 && (inetAddress.getAddress().length == 4)) {
-                            println(inetAddress.getHostAddress());
+                            //println("Host address="+inetAddress.getHostAddress());
                             return inetAddress.getHostAddress();
                         }
                     }

@@ -7,8 +7,18 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/AppTheme">
-        <activity android:name=".MainActivity">android:theme="@android:style/Theme.NoTitleBar"&gt;
+        android:theme="@style/AppTheme"
+        >
+        <!--android:supportsPictureInPicture="true"-->
+
+        <activity android:name=".MainActivity"
+            android:resizeableActivity="true"
+            android:screenOrientation="landscape"
+            android:theme="@android:style/Theme.NoTitleBar"
+            >
+            <layout android:minHeight="120dp"
+                android:minWidth="160dp"
+                />
             <intent-filter>
             <action android:name="android.intent.action.MAIN"/>
             <category android:name="android.intent.category.LAUNCHER"/>
