@@ -2,6 +2,7 @@ package com.andymodla.remotecapture;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.view.KeyEvent;
 import android.view.Window;
 import android.view.WindowManager;
@@ -17,7 +18,7 @@ import processing.core.PApplet;
 
 import static com.andymodla.remotecapture.R.layout.main;
 
-public class MainActivity extends Activity {
+public class MainActivity extends AppCompatActivity {
     PApplet fragment;
     private static final String MAIN_FRAGMENT_TAG = "main_fragment";
     private static final int REQUEST_PERMISSIONS = 1;

@@ -117,7 +117,7 @@ public class RemoteCapture extends PApplet {
     public void setup() {
         background(0);
         drawSetup();
-        String wifiApIpAddress = getWifiApIpAddress();
+        String wifiApIpAddress = getWifiBroadcastIpAddress();
         println("wifiapIpAddress=" + wifiApIpAddress);
         if (wifiApIpAddress == null) {
             BROADCAST = "255.255.255.255";
@@ -491,7 +491,7 @@ public class RemoteCapture extends PApplet {
                 sendMsg("F");
                 println("FOCUS HOLD");
             } else {
-                sendMsg("R");
+                sendMsg("R"); // reset
                 focus = false;
                 first_tap = false;
                 println("FOCUS RELEASE");
@@ -519,33 +519,31 @@ public class RemoteCapture extends PApplet {
             println("failed " + BROADCAST);
         }
         println(BROADCAST + " broadcast net status " + status);
-//        String wifiApIpAddress = getWifiApIpAddress();
-//        println("wifiapIpAddress="+ wifiApIpAddress);
-//        if (!status) {
-//            BROADCAST = wifiApIpAddress.substring(0, wifiApIpAddress.lastIndexOf('.'))+".255";
-//            println("new BROADCAST="+BROADCAST);
-//        }
         return status;
     }
 
-    public String getWifiApIpAddress() {
+    public String getWifiBroadcastIpAddress() {
         try {
             for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en
                     .hasMoreElements(); ) {
                 NetworkInterface intf = en.nextElement();
-                if (intf.getName().contains("wlan")) {
-                    for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr
-                            .hasMoreElements(); ) {
-                        InetAddress inetAddress = enumIpAddr.nextElement();
-                        //NetworkInterface networkInterface = NetworkInterface.getByInetAddress(inetAddress);
-                        //for (InterfaceAddress address : networkInterface.getInterfaceAddresses()) {
-                        //    println(address.getNetworkPrefixLength());
-                        //}
-                        //println("inetAddress="+inetAddress.getCanonicalHostName());
-                        if (!inetAddress.isLoopbackAddress()
-                                && (inetAddress.getAddress().length == 4)) {
-                            //println("Host address="+inetAddress.getHostAddress());
-                            return inetAddress.getHostAddress();
+                Enumeration<NetworkInterface> niEnum = NetworkInterface.getNetworkInterfaces();
+                while (niEnum.hasMoreElements())
+                {
+                    NetworkInterface ni = niEnum.nextElement();
+                    if(!ni.isLoopback()){
+                        for (InterfaceAddress interfaceAddress : ni.getInterfaceAddresses())
+                        {
+//                            int maskLength = 0;
+//                            maskLength = interfaceAddress.getNetworkPrefixLength();
+//                            if (maskLength <= 24 && maskLength >= 8) {
+//                                println("Network prefix length="+interfaceAddress.getNetworkPrefixLength());
+//                            }
+
+                            if (interfaceAddress.getBroadcast()!= null) {
+                                //println(interfaceAddress.getBroadcast().toString());
+                                return (interfaceAddress.getBroadcast().toString().substring(1));
+                            }
                         }
                     }
                 }
