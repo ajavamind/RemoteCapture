@@ -2,6 +2,7 @@ package com.andymodla.remotecapture;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.view.KeyEvent;
 
@@ -12,7 +13,10 @@ import java.net.InetAddress;
 import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Enumeration;
+import java.util.Locale;
 
 import netP5.UdpClient;
 import processing.core.PApplet;
@@ -44,10 +48,11 @@ public class RemoteCapture extends PApplet {
     int port = 8000;
     Activity myActivity;
     SharedPreferences preferences;
-    public static final String SETTINGS = "com.andymodla.remoteshutter";
-    public static final String PHOTOINDEX = "photoIndex";
-    public static final String VIDEOINDEX = "videoIndex";
-    static final String CAMERA_MODE = "camera.mode";
+    private static final String SETTINGS = "com.andymodla.remoteshutter";
+    private static final String PHOTOINDEX = "photoIndex";
+    private static final String VIDEOINDEX = "videoIndex";
+    private static final String CAMERA_MODE = "camera.mode";
+    private static final String TIMESTAMP = "timestamp";
 
     int black = color(0);   // black
     int gray = color(128);
@@ -96,18 +101,41 @@ public class RemoteCapture extends PApplet {
     static final int MAIN_SCREEN = 0;
     static final int MENU_SCREEN = 1;
     int screen = MAIN_SCREEN;
+    String action;
+    boolean canChangeMode = true;
+    boolean shutterPressed = false;
+    boolean useTimeStamp = true;
+    String filename = "";
 
+    public boolean isUseTimeStamp() {
+        return useTimeStamp;
+    }
+
+    public void setUseTimeStamp(boolean useTimeStamp) {
+        this.useTimeStamp = useTimeStamp;
+    }
+
+    public void setAction(String action) {
+        this.action = action;
+    }
     public void settings() {
         size(displayWidth, displayHeight, OPENGL);
         //fullScreen();  // causes navigation bar to be hidden
         orientation(LANDSCAPE);
         myActivity = getActivity();
-        if (myActivity == null)
-            println("activity null");
+        if (myActivity == null) {
+            println("Error Activity is null");
+        }
         preferences = myActivity.getSharedPreferences(SETTINGS, Context.MODE_PRIVATE);
         photoIndex = preferences.getInt(PHOTOINDEX, 0);
         videoIndex = preferences.getInt(VIDEOINDEX, 0);
         mode = preferences.getInt(CAMERA_MODE, PHOTO_MODE);
+        useTimeStamp = preferences.getBoolean(TIMESTAMP, false);
+        if (action.equals(Intent.ACTION_SEND)) {
+            mode = PHOTO_MODE;
+            canChangeMode = false;
+        }
+        getFilename(false);
         //ipList.clear();
         //ipList.add(0, new NetAddress(RIGHT, port));
         //ipList.add(1, new NetAddress(LEFT, port));
@@ -226,17 +254,20 @@ public class RemoteCapture extends PApplet {
             else
                 text("STOP", CIRCLE_BUTTON_X - BUTTON_SIZE/2 +  BUTTON_SIZE / 8 + BUTTON_SIZE / 20 , CIRCLE_BUTTON_Y - BUTTON_SIZE/2 +  BUTTON_SIZE / 4 + BUTTON_SIZE / 20);
         }
-        if (mode == PHOTO_MODE) {
+        if (useTimeStamp) {
             fill(yellow);
-            if (photoIndex != 0) {
-                text(number(photoIndex), CIRCLE_BUTTON_X - BUTTON_SIZE/2 +  BUTTON_SIZE / 8 + BUTTON_SIZE / 20 , CIRCLE_BUTTON_Y  +  BUTTON_SIZE / 4 + BUTTON_SIZE / 20);
+            setTextSize((FONT_SIZE)/2);
+            if (!filename.equals("")) {
+                text(getFilename(false), CIRCLE_BUTTON_X - BUTTON_SIZE/2 +  BUTTON_SIZE / 8 + BUTTON_SIZE / 20 , CIRCLE_BUTTON_Y  +  BUTTON_SIZE / 4 + BUTTON_SIZE / 20);
             }
         } else {
             fill(yellow);
-            if (videoIndex != 0) {
-                text(number(videoIndex), CIRCLE_BUTTON_X - BUTTON_SIZE/2 +  BUTTON_SIZE / 8 + BUTTON_SIZE / 20 , CIRCLE_BUTTON_Y  +  BUTTON_SIZE / 4 + BUTTON_SIZE / 20);
+            setTextSize((FONT_SIZE*3)/4);
+            if (!filename.equals("")) {
+                text(getFilename(false), CIRCLE_BUTTON_X - BUTTON_SIZE/2 +  BUTTON_SIZE / 8 + BUTTON_SIZE / 20 , CIRCLE_BUTTON_Y  +  BUTTON_SIZE / 4 + BUTTON_SIZE / 20);
             }
         }
+        setTextSize(FONT_SIZE);
         if (showMessage && messageCounter > 0) {
             fill(red);
             text(message, width/20, (9*height)/10);
@@ -254,9 +285,12 @@ public class RemoteCapture extends PApplet {
         setTextSize(FONT_SIZE / 2);
         fill(gray);
         text("Written by Andy Modla", width / 8, 7 * y);
-        text("Copyright 2017 Tekla Inc", width / 8, 8 * y);
+        text("Copyright 2019 Tekla Inc", width / 8, 8 * y);
         text("All Rights Reserved", width / 8, 9 * y);
-        text("Version " + BuildConfig.VERSION_NAME, width / 8, 10 * y);
+        if (BuildConfig.BUILD_TYPE.equals("debug"))
+            text("DEBUG Version " + BuildConfig.VERSION_NAME, width / 8, 10 * y);
+        else
+            text("Version " + BuildConfig.VERSION_NAME, width / 8, 10 * y);
     }
 
     public void drawCheckbox() {
@@ -298,6 +332,12 @@ public class RemoteCapture extends PApplet {
         textSize(size);
     }
 
+    public String getDateTime() {
+        Date current_date = new Date();
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(current_date);
+        return timeStamp;
+    }
+
     public void draw() {
         background(0);
         drawSetup();
@@ -306,7 +346,7 @@ public class RemoteCapture extends PApplet {
 
         // common screen elements
         fill(gray);
-        text("WIFI Remote Capture", RECT_BUTTON_X, height / 10);
+        text("WiFi Remote Capture", RECT_BUTTON_X, height / 10);
         stroke(0);
         fill(lightblue);
         ellipse(width / 2 + width / 4 + width / 8, height / 14, BUTTON_SIZE / 10, BUTTON_SIZE / 10);
@@ -380,11 +420,30 @@ public class RemoteCapture extends PApplet {
         // common areas either screen
         if (mouseY < height / 10 && mouseX > width / 2 + width / 4 + width / 8) {
             //println("menu");
-            // toggle screens
-            if (screen == MAIN_SCREEN)
-                screen = MENU_SCREEN;
-            else
-                screen = MAIN_SCREEN;
+            if (canChangeMode) {
+                // toggle screens
+                if (screen == MAIN_SCREEN)
+                    screen = MENU_SCREEN;
+                else
+                    screen = MAIN_SCREEN;
+            } else {
+                onBackPressed();
+                // exit
+                Intent result = new Intent();
+                if (shutterPressed) {
+                    myActivity.setResult(Activity.RESULT_OK, result);
+                } else {
+                    myActivity.setResult(Activity.RESULT_CANCELED, result);
+                }
+                myActivity.finish();
+            }
+        } else if ((mouseY < height / 10 && mouseX > width / 2 + width / 4) ) {
+            //println("toggle timestamp and number");
+            useTimeStamp = !useTimeStamp;
+            SharedPreferences.Editor edit = preferences.edit();
+            edit.putBoolean(TIMESTAMP, useTimeStamp);
+            edit.commit();
+            getFilename(false);
         }
     }
 
@@ -394,6 +453,7 @@ public class RemoteCapture extends PApplet {
             SharedPreferences.Editor edit = preferences.edit();
             edit.putInt(CAMERA_MODE, mode);
             edit.commit();
+            getFilename(false);
             focus = false;
             focusHold = false;
             shutter = false;
@@ -409,7 +469,7 @@ public class RemoteCapture extends PApplet {
     public String number(int index) {
         // fix size of index number at 4 characters long
         if (index == 0)
-            return "0000";
+            return "";
         else if (index < 10)
             return ("000" + String.valueOf(index));
         else if (index < 100)
@@ -439,21 +499,40 @@ public class RemoteCapture extends PApplet {
         edit.commit();
     }
 
+    public String getFilename(boolean update) {
+        String fn = "";
+        if (useTimeStamp) {
+            fn = getDateTime();
+        } else {
+            if (mode == PHOTO_MODE) {
+                if (update)
+                    updatePhotoIndex();
+                fn =number(photoIndex);
+            } else {
+                if (update)
+                    updateVideoIndex();
+                fn = number(videoIndex);
+            }
+        }
+        filename = fn;
+        return fn;
+    }
+
     public void capture() {
         if (mode == PHOTO_MODE) {
             // shutter button
             if (first_tap && !focusHold) {
                 first_tap = false;
                 shutter = true;
-                updatePhotoIndex();
-                sendMsg("C" + number(photoIndex));
+                sendMsg("C" + getFilename(true));
+                shutterPressed = true;
                 println("CAPTURE");
                 counter = DELAY;
             } else {
                 if (focusHold) {
                     shutter = true;
-                    updatePhotoIndex();
-                    sendMsg("S" + number(photoIndex));
+                    sendMsg("S" + getFilename(true));
+                    shutterPressed = true;
                     println("SHUTTER");
                     counter = DELAY;
                 } else {
@@ -467,8 +546,8 @@ public class RemoteCapture extends PApplet {
         {
             if (!shutter) {
                 shutter = true;
-                updateVideoIndex();
-                sendMsg("V" + number(videoIndex));
+                sendMsg("V" + getFilename(true));
+                shutterPressed = true;
                 println("RECORD");
                 recording = true;
                 paused = false;

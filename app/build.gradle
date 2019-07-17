@@ -11,14 +11,14 @@ android {
         config {
         }
     }
-    compileSdkVersion 25
-    buildToolsVersion "25.0.2"
+    compileSdkVersion 28
+    buildToolsVersion "28.0.3"
     defaultConfig {
         applicationId "com.andymodla.remotecapture"
         minSdkVersion 15
-        targetSdkVersion 25
-        versionCode 9
-        versionName "1.8"
+        targetSdkVersion 28
+        versionCode 10
+        versionName "1.9"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
@@ -31,14 +31,13 @@ android {
 }
 
 dependencies {
-    compile files('libs/oscP5.jar')
-    compile files('libs/processing-core.jar')
-    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
+    implementation files('libs/oscP5.jar')
+    implementation files('libs/processing-core.jar')
+    androidTestImplementation('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
-    compile 'com.android.support:appcompat-v7:25.3.1'
-    compile 'com.android.support:support-v4:25.3.1'
+    implementation 'com.android.support:appcompat-v7:28.0.0'
+    implementation 'com.android.support:support-v4:28.0.0'
 
-//    compile 'com.android.support:appcompat-v7:25.1.0'
-    testCompile 'junit:junit:4.12'
+    testImplementation 'junit:junit:4.12'
 }

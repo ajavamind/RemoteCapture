@@ -17,16 +17,21 @@ import android.content.DialogInterface;
 import processing.core.PApplet;
 
 import static com.andymodla.remotecapture.R.layout.main;
+import static processing.core.PApplet.print;
 
 public class MainActivity extends AppCompatActivity {
     PApplet fragment;
     private static final String MAIN_FRAGMENT_TAG = "main_fragment";
     private static final int REQUEST_PERMISSIONS = 1;
     int viewId = 0x1000;
+    String action;
     @SuppressWarnings("ResourceType")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // intent contains mode setting
+        action = getIntent().getAction();
+        print("Start Remote Capture action: "+ action);
         Window window = getWindow();
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         window.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN, WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN);
@@ -41,6 +46,7 @@ public class MainActivity extends AppCompatActivity {
         } else {
             fragment = (PApplet) getFragmentManager().findFragmentByTag(MAIN_FRAGMENT_TAG);
         }
+        ((RemoteCapture) fragment).setAction(action);
     }
     @Override
     public void onBackPressed() {
