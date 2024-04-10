@@ -1,4 +1,4 @@
-# Remote Capture Android Application
+# WiFi Remote Capture Android Application
 
 This app runs on Android and was available on Google Play Service.
 
