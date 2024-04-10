@@ -1,16 +1,6 @@
 apply plugin: 'com.android.application'
 
 android {
-    signingConfigs {
-        teklaincdevstore {
-            keyAlias 'stereophotoviewer'
-            keyPassword 'i6GCcFH9'
-            storeFile file('C:/Users/Andrew/Documents/AndroidApp/teklaincdevstore.jks')
-            storePassword 'i6GCcFH9'
-        }
-        config {
-        }
-    }
     compileSdkVersion 28
     buildToolsVersion "28.0.3"
     defaultConfig {
